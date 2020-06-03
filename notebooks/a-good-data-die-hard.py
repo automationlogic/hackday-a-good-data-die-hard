@@ -20,10 +20,19 @@ display(dbutils.fs.ls("/FileStore/tables/"))
 
 from pyspark.sql.functions import regexp_extract, col
 
-result = data.withColumn('OS', regexp_extract(col('Description'), '.*(Android|Windows|FreeBSD|Linux|MacOS).*', 1))
+result = data.withColumn('OS', regexp_extract(col('Description'), '.*(Android|Windows|BSD|Linux|MacOS).*', 1))
 result.createOrReplaceTempView("os_column")
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC SELECT * FROM os_column WHERE LENGTH(OS) > 1;
+
+# COMMAND ----------
+
+dbutils.fs.mount(
+  source = "wasbs://databricks-output@datahardstorage.blob.core.windows.net/",
+  mount_point = "/mnt/databricks-output",
+  extra_configs = {"fs.azure.account.key.datahardstorage.blob.core.windows.net":dbutils.secrets.get(scope = "cve", key = "datahardstorage-access-key")})
+
+result.write.format("parquet").save("/mnt/databricks-output/mitre-cve.parquet")
